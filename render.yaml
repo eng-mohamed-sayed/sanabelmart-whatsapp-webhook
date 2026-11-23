@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: sanabelmart-whatsapp-webhook
+    env: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server.js
+    envVars:
+      - key: VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: TEST_ONE_SHOT
+        value: "true"
+      - key: PHONE_NUMBER_ID
+        value: "451419464730914"
+      - key: GRAPH_API_VERSION
+        value: v21.0

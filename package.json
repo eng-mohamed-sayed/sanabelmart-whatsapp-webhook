@@ -1,0 +1,1 @@
+{"description":"WhatsApp Cloud API webhook for Sanabelmart auto-replies","engines":{"node":">=18"},"main":"server.js","name":"sanabelmart-whatsapp-webhook","private":true,"scripts":{"start":"node server.js"},"version":"0.1.0"}
