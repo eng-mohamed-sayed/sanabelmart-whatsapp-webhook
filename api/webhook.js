@@ -55,10 +55,10 @@ module.exports = async (req, res) => {
     return;
   }
   if (req.method === 'POST' && url.pathname === '/webhook') {
-    res.status(200).send('EVENT_RECEIVED');
-    // Vercel may hand req.body to the function as a raw string, not a
-    // parsed object. Parse it here, otherwise payload.object is
-    // undefined and every real message is silently ignored.
+    // Reply BEFORE answering 200: on Vercel the function can be frozen
+    // once the response is sent, so work done after res.send may never
+    // run (that is why the parsed message logged but no Graph API call
+    // was ever made).
     let payload = {};
     try {
       if (typeof req.body === 'string' && req.body) {
@@ -68,10 +68,14 @@ module.exports = async (req, res) => {
       }
     } catch (err) {
       console.error('Failed to parse webhook body:', err.message);
+      res.status(200).send('EVENT_RECEIVED');
       return;
     }
     console.log('Webhook payload object:', payload.object);
-    if (payload.object !== 'whatsapp_business_account') return;
+    if (payload.object !== 'whatsapp_business_account') {
+      res.status(200).send('EVENT_RECEIVED');
+      return;
+    }
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
         const value = change.value || {};
@@ -80,9 +84,14 @@ module.exports = async (req, res) => {
           if (message.type !== 'text' || !message.from) continue;
           if (seen.has(message.id)) continue;
           seen.add(message.id);
-          if (TEST_ONE_SHOT && alreadyReplied) continue;
+          if (TEST_ONE_SHOT && alreadyReplied) {
+            console.log('Skipping reply: already replied (one-shot test mode)');
+            continue;
+          }
           try {
+            console.log('Sending auto-reply to:', message.from);
             await sendWhatsAppMessage(message.from, AUTO_REPLY_TEXT);
+            console.log('Auto-reply sent to:', message.from);
             if (TEST_ONE_SHOT) alreadyReplied = true;
           } catch (err) {
             console.error('Failed to reply:', err.message);
@@ -90,6 +99,7 @@ module.exports = async (req, res) => {
         }
       }
     }
+    res.status(200).send('EVENT_RECEIVED');
     return;
   }
   res.status(404).send('Not found');
