@@ -56,12 +56,27 @@ module.exports = async (req, res) => {
   }
   if (req.method === 'POST' && url.pathname === '/webhook') {
     res.status(200).send('EVENT_RECEIVED');
-    const payload = req.body || {};
+    // Vercel may hand req.body to the function as a raw string, not a
+    // parsed object. Parse it here, otherwise payload.object is
+    // undefined and every real message is silently ignored.
+    let payload = {};
+    try {
+      if (typeof req.body === 'string' && req.body) {
+        payload = JSON.parse(req.body);
+      } else if (req.body && typeof req.body === 'object') {
+        payload = req.body;
+      }
+    } catch (err) {
+      console.error('Failed to parse webhook body:', err.message);
+      return;
+    }
+    console.log('Webhook payload object:', payload.object);
     if (payload.object !== 'whatsapp_business_account') return;
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
         const value = change.value || {};
         for (const message of value.messages || []) {
+          console.log('Incoming message:', message.from, message.type, message.id);
           if (message.type !== 'text' || !message.from) continue;
           if (seen.has(message.id)) continue;
           seen.add(message.id);
